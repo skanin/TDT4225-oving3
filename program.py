@@ -5,6 +5,8 @@ import traceback
 from datetime import datetime
 import time
 import functools
+from pprint import pprint
+from bson.code import Code
 
 from haversine import haversine, Unit
 from tabulate import tabulate
@@ -21,6 +23,9 @@ class Program:
         self.tpsToAdd = []
         self.acitivityTpsToAdd = []
         self.activity_id_counter = 0
+        self.userColl = self.db['User']
+        self.activityColl = self.db['Activity']
+        self.trackpointColl = self.db['Trackpoint']
 
     def create_coll(self, collection_name):
         collection = self.db.create_collection(collection_name)    
@@ -218,23 +223,78 @@ class Program:
         usersColl.insert_many(users)
         print('Inserted Users')
 
+
+    def fetch_documents(self, collection_name):
+        collection = self.db[collection_name]
+        documents = collection.find()
+        return documents
+
+    def part2Task1(self):
+        users = self.userColl.count_documents({})
+        activities = self.activityColl.count_documents({})
+        trackpoints = self.trackpointColl.count_documents({})
+
+        print(f'There are {users} users, {activities} activities and {trackpoints} trackpoints in the database')
+    
+    def part2Task2(self):
+        users = self.fetch_documents('User')
+        usersCount = self.userColl.count_documents({})
+        activityCount = 0
+        for user in users:
+            activityCount += len(user['activities'])
+        
+        print(f'Average number of activities for users are {activityCount/usersCount}')
+    
+    def part2Task3(self):
+        users = list(self.userColl.aggregate([
+            {'$unwind': '$activities'},
+            {'$group': {'_id': '$_id', 'Activity count': {'$sum': 1}}},
+            {'$sort': {'Activity count': -1}},
+            {'$limit': 20}
+        ]))
+
+        pprint(users)
+
+    def part2Task4(self):
+        taxiActivities = list(map(lambda x: x['user_id'], list(self.activityColl.find({'transportation_mode': 'taxi'}, {'user_id': 1, '_id': 0}))))
+        users = self.userColl.find({'_id': {'$in': taxiActivities}}, {'_id': 1})
+        pprint(list(users))
+
+    def part2Task5(self):
+        mapper = Code("""
+            function () {
+                if(this.transportation_mode !== null){
+                    emit(this.transportation_mode, 1);
+                }
+            }
+        """)
+
+        reducer = Code("""
+            function (key, values) {
+                var total = 0;
+                for(var i = 0; i < values.length; i++) {
+                    total += values[i];
+                }
+                return total;
+            } 
+        """ )
+
+        modes = self.activityColl.map_reduce(mapper, reducer, "res")
+        for doc in modes.find().sort("value"):
+            pprint(doc)
     
 
 def main():
     # try:
     program = Program()
-    program.cleanDB()
-    program.insertData()
-    # program.setMaxGlobal()
-    # print('##############')
-    # start = time.time()
-    # print('Inserting data...')
+    # program.cleanDB()
     # program.insertData()
-    # print('Inserted data')
-    # print('##############')
-    # print(f'{time.time() - start} seconds')
-    # print('\n'*3)
-    # print('##################Tasks##################')
+    # program.part2Task1()
+    # program.part2Tak2()
+    # program.part2Task3()
+    # program.part2Task4()
+    program.part2Task5()
+
 
 
 if __name__ == '__main__':
