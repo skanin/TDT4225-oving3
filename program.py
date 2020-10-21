@@ -74,8 +74,8 @@ class Program:
                         self.keysToSkip.append(tp[0]) # We skip this trackpoint later on
                         activity_to_add = {
                             'transportation_mode': activity[-1],
-                            'start_date_time': activity[0],
-                            'end_date_time': activity[1],
+                            'start_date_time': self.formatDateTime(activity[0]),
+                            'end_date_time': self.formatDateTime(activity[1]),
                             'user_id': user
                         }
                 if activity_to_add is not None:
@@ -87,6 +87,12 @@ class Program:
             except StopIteration:
                 break
             
+    def formatDateTime(self, date):
+        #print(date)
+        date = date.split(' ')
+        date = [date[0].split('/'), date[1].split(':')]
+
+        return datetime(int(date[0][0]), int(date[0][1]), int(date[0][2]), int(date[1][0]), int(date[1][1]), int(date[1][2]))
         
     def prepareTrackPoints(self, trackpoints, activity=False, user=None):
         """Inserts new acties to Activity table and prepares trackpoints for insert"""
@@ -94,10 +100,11 @@ class Program:
             try:
                 tps = next(trackpoints) # get next from generator
                 if not activity and tps[0] not in self.keysToSkip:  # If we are not to skip this activity and it is not an activity with label
+                    # print(tps[1])
                     a = {
                         'transportation_mode': None,
-                            'start_date_time': tps[1][-1],
-                            'end_date_time': tps[-1][-1],
+                            'start_date_time': self.formatDateTime(tps[1][-1]),
+                            'end_date_time': self.formatDateTime(tps[-1][-1]),
                             'user_id': user
                     }
                     tmp_tps = [a] # We get the last insert id.
@@ -157,7 +164,7 @@ class Program:
                 'lon': x[1],
                 'altitude': x[2],
                 'date_days': x[3],
-                'date_time': x[4]
+                'date_time': self.formatDateTime(x[4])
             }, tps[1:])
 
             res = trackpointColl.insert_many(tps_to_add)
@@ -192,7 +199,7 @@ class Program:
 
             if 'labels.txt' in files: # If the user has labeled activities ..
                 print(f'Labels for user {count}/69 - {round(count/69 * 100, 2)}% done')
-                print(root)
+                # print(root)
                 self.insertIntoActivityWithLabels(self.readLabels(f'{root}/labels.txt'), self.readTrackPoints(os.listdir(root + '/Trajectory'), root + '/Trajectory'), userid)
                 count += 1
         
@@ -279,10 +286,69 @@ class Program:
             } 
         """ )
 
-        modes = self.activityColl.map_reduce(mapper, reducer, "res")
+        modes = self.activityColl.map_reduce(mapper, reducer, "results")
         for doc in modes.find().sort("value"):
             pprint(doc)
-    
+
+    def part2Task6point1(self):
+        maxYear = list(self.activityColl.aggregate([
+            {'$project':
+                {
+                'year':
+                    {
+                        '$year': '$start_date_time'}
+                    }
+                },
+            {
+            '$group':
+                {'_id':
+                    {'year': '$year'},
+                    'count':
+                    {
+                        '$sum': 1
+                    }
+                }
+            },
+            {'$sort': {'count': -1}},
+            {'$limit': 1}
+        ]))[0]['_id']['year']
+
+        print(f'The year with most activities are {maxYear}')
+
+    def part2Task6point2(self):
+        year = list(self.activityColl.aggregate([
+            {
+                '$project': {
+                    'hours': {
+                        '$divide': [
+                            {'$subtract': ['$end_date_time', '$start_date_time']},
+                            60*1000*60
+                        ]
+                    },
+                    'year': {
+                        '$year': '$start_date_time'
+                    }
+                }
+            },
+            {
+            '$group':
+                {'_id':
+                    {'year': '$year'},
+                    'count':
+                    {
+                        '$sum': '$hours'
+                    }
+                }
+            },
+            {
+                '$sort': {'count': -1}
+            },
+            {
+                '$limit': 1
+            }
+        ]))[0]['_id']['year']
+
+        print(f'The year with most recorded hours are {year}. So no, it is not the same as part a')
 
 def main():
     # try:
@@ -293,7 +359,9 @@ def main():
     # program.part2Tak2()
     # program.part2Task3()
     # program.part2Task4()
-    program.part2Task5()
+    # program.part2Task5()
+    # program.part2Task6point1()
+    program.part2Task6point2()
 
 
 
