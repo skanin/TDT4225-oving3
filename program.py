@@ -237,6 +237,8 @@ class Program:
         return list(documents)
 
     def part2Task1(self):
+        print('################################')
+        print('Task 2.1')
         users = self.userColl.count_documents({})
         activities = self.activityColl.count_documents({})
         trackpoints = self.trackpointColl.count_documents({})
@@ -244,12 +246,16 @@ class Program:
         print(f'There are {users} users, {activities} activities and {trackpoints} trackpoints in the database')
     
     def part2Task2(self):
+        print('################################')
+        print('Task 2.2')
         activityCount = self.activityColl.count_documents({})
         usersCount = self.userColl.count_documents({})
         
         print(f'Average number of activities for users are {activityCount/usersCount}')
     
     def part2Task3(self):
+        print('################################')
+        print('Task 2.3')
         users = list(self.userColl.aggregate([
             {'$unwind': '$activities'},
             {'$group': {'_id': '$_id', 'Activity count': {'$sum': 1}}},
@@ -260,11 +266,15 @@ class Program:
         pprint(users)
 
     def part2Task4(self):
+        print('################################')
+        print('Task 2.4')
         taxiActivities = list(map(lambda x: x['user_id'], list(self.activityColl.find({'transportation_mode': 'taxi'}, {'user_id': 1, '_id': 0}))))
         users = self.userColl.find({'_id': {'$in': taxiActivities}}, {'_id': 1})
         pprint(list(users))
 
     def part2Task5(self):
+        print('################################')
+        print('Task 2.5')
         mapper = Code("""
             function () {
                 if(this.transportation_mode !== null){
@@ -288,6 +298,8 @@ class Program:
             pprint(doc)
 
     def part2Task6point1(self):
+        print('################################')
+        print('Task 2.6a')
         maxYear = list(self.activityColl.aggregate([
             {'$project':
                 {
@@ -313,6 +325,8 @@ class Program:
         print(f'The year with most activities are {maxYear}')
 
     def part2Task6point2(self):
+        print('################################')
+        print('Task 2.6b')
         year = list(self.activityColl.aggregate([
             {
                 '$project': {
@@ -349,6 +363,8 @@ class Program:
 
 
     def part2Task7(self):
+        print('################################')
+        print('Task 2.7')
         activities = self.db['Activity'].aggregate([{
             '$match': {
                 'transportation_mode': 'walk',
@@ -379,6 +395,8 @@ class Program:
         pprint(f'Total distance walked by user 112 is {total}km')
 
     def part2Task8(self):
+        print('################################')
+        print('Task 2.8')
         activities = self.db['Activity'].aggregate([
         {
             '$match': {
@@ -415,6 +433,8 @@ class Program:
         pprint(users)
     
     def part2Task9(self):
+        print('################################')
+        print('Task 2.9')
         activities = self.activityColl.aggregate([
         {
             '$lookup': {
@@ -443,6 +463,8 @@ class Program:
 
 
     def part2Task10(self):
+        print('################################')
+        print('Task 2.10')
         lat = 39.916
         lon = 116.397
         tps = self.trackpointColl.aggregate([
@@ -477,22 +499,87 @@ class Program:
         for u in tps:
             pprint(u)
 
+    def part2Task11(self):
+        print('################################')
+        print('Task 2.11')
+        users = self.activityColl.aggregate([
+            {
+                '$match': {
+                    'transportation_mode': {
+                        '$ne': None
+                    }
+                }
+            },
+            {
+                '$group': {
+                    '_id': {
+                        'trans_mode': '$transportation_mode',
+                        'user': '$user_id'
+                    },
+                    'count': {
+                        '$sum': 1
+                    }
+                }
+            },
+            {
+                '$sort': {
+                    'count': -1
+                }
+            },
+            {
+                '$group': {
+                    '_id': '$_id.user',
+                    'most': {
+                        '$first': 'count'
+                    },
+                    'trans_mode': {'$first': '$_id.trans_mode'}
+                }
+            },
+            {
+                '$project': {
+                    '_id': 0,
+                    'user_id': '$_id',
+                    'transportation mode': '$trans_mode'
+                }
+            },
+            {
+                '$sort': {
+                    'user_id': 1
+                }
+            }
+        ])
+
+        for tmp in users:
+            pprint(tmp)
+
 def main():
     # try:
     program = Program()
     # program.cleanDB()
     # program.insertData()
-    # program.part2Task1()
-    # program.part2Task2()
-    # program.part2Task3()
-    # program.part2Task4()
-    # program.part2Task5()
-    # program.part2Task6point1()
-    # program.part2Task6point2()
-    # program.part2Task7()
-    # program.part2Task8()
-    # program.part2Task9()
+    program.part2Task1()
+    print('\n')
+    program.part2Task2()
+    print('\n')
+    program.part2Task3()
+    print('\n')
+    program.part2Task4()
+    print('\n')
+    program.part2Task5()
+    print('\n')
+    program.part2Task6point1()
+    print('\n')
+    program.part2Task6point2()
+    print('\n')
+    program.part2Task7()
+    print('\n')
+    program.part2Task8()
+    print('\n')
+    program.part2Task9()
+    print('\n')
     program.part2Task10()
+    print('\n')
+    program.part2Task11()
 
 
 
