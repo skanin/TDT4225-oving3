@@ -102,7 +102,7 @@ class Program:
                 if not activity and tps[0] not in self.keysToSkip:  # If we are not to skip this activity and it is not an activity with label
                     # print(tps[1])
                     a = {
-                        'transportation_mode': None,
+                            'transportation_mode': None,
                             'start_date_time': self.formatDateTime(tps[1][-1]),
                             'end_date_time': self.formatDateTime(tps[-1][-1]),
                             'user_id': user
@@ -160,10 +160,10 @@ class Program:
 
             tps_to_add = map(lambda x: {
                 'activity_id': self.activity_id_counter,
-                'lat': x[0],
-                'lon': x[1],
-                'altitude': x[2],
-                'date_days': x[3],
+                'lat': float(x[0]),
+                'lon': float(x[1]),
+                'altitude': float(x[2]),
+                'date_days': float(x[3]),
                 'date_time': self.formatDateTime(x[4])
             }, tps[1:])
 
@@ -379,7 +379,6 @@ class Program:
         pprint(f'Total distance walked by user 112 is {total}km')
 
     def part2Task8(self):
-        startTime = time.time()
         activities = self.db['Activity'].aggregate([
         {
             '$match': {
@@ -404,7 +403,7 @@ class Program:
         for a in activities:
             alts = a['trackpoints']
             res = 0
-            for i in range(len(a['trackpoints']) - 1):
+            for i in range(len(alts) - 1):
                 if alts[i]['altitude'] == '-777':
                     continue
                 if float(alts[i]['altitude']) < float(alts[i + 1]['altitude']):
@@ -414,129 +413,69 @@ class Program:
         users = [('Userid', 'Total meters gained')] + sorted(list(userAlts.items()), key=lambda x: x[1], reverse=True)[0:20]
         print('Top 20 users that gained most altitude: ')
         pprint(users)
-
-
-        # mapper = Code("""
-        #     function () {
-        #         emit(this._id, this.altitude)
-        #     }
-        # """)
-
-        # reducer = Code("""
-        #     function (key, values) {
-        #         var total = 0;
-        #         var last = 0
-        #         for(var i = 0; i < values.length; i++) {
-        #             total += parseFloat(values[i]);
-        #             last = values[i]
-        #         }
-        #         return total;
-        #     } 
-        # """ )
-
-        # res = self.trackpointColl.map_reduce(mapper, reducer, {'$group': {
-
-        # }"results"})
-        # for doc in res.find().sort("value"):
-        #     pprint(doc)
-
-        # print('Finding trackpoints')
-        # trackpoints = list(self.trackpointColl.find({}))
-        # print('Found trackpoints')
-        # print('Finding activities')
-        # activities = self.activityColl.find({})
-        # print('Found activities')
-
-        # count = 0
-        # for tp in trackpoints:
-        #     print(f'TP {count}/noe')
-        #     for a in activities:
-        #         pass
-        #     count += 1
-                
-        # tps = self.trackpointColl.aggregate([{
-        #     '$group': {
-        #         '_id': '$activity_id',
-        #         'altitude': {'$altitude': '$altitude'},
-        #         'tp_id': {'$_id': '$_id'}
-        #     }
-        # }])
-
-        # for tp in tps:
-        #     print(tp)
-
-        # tps = self.trackpointColl.find({})
-        # activities = self.activityColl.find({})
-
-        # users = {}
-        # count = 0
-        # for a in activities:
-        #     print(f'Activity {count}/16033')
-        #     lastAlt = 0
-        #     total = 0
-        #     atps = self.trackpointColl.find({'activity_id': a['_id']})
-        #     for tp in atps:
-        #         tpAlt = float(tp['altitude'])
-        #         if lastAlt < tpAlt:
-        #             lastAlt = tpAlt
-        #             total += tpAlt
-        #     users[a['user_id']] = total
-        #     count += 1
-
-        # tps = [tp for tp in self.trackpointColl.find({})]
-
-        # print('Hey')
-
-        # users = {}
-        # count = 1
-        # for activity in activities:
-        #     print(f'Activity {count}/16033')
-        #     lastAlt = float('-inf')
-        #     first = True
-        #     alt = 0
-        #     tpcount = 0
-        #     for tpid in activity['trackpoints']:
-        #         tp = list(self.trackpointColl.find({'_id': tpid}))[0]
-        #         tpAlt = float(tp['altitude'])
-        #         if first and tpAlt != -777:
-        #             lastAlt = tpAlt
-        #             alt = tpAlt
-        #             first = False
-        #             continue
-        #         if lastAlt < tpAlt:
-        #             lastAlt = tpAlt
-        #             alt += tpAlt
-        #     # activityTps = self.trackpointColl.find({'activity_id': activity['_id']})
-        #     # lastAlt = float('-inf')
-        #     # first = True
-        #     # alt = 0
-        #     # tpcount = 0
-        #     # for tp in activityTps:
-        #     #     tpAlt = float(tp['altitude'])
-        #     #     if first and tpAlt != -777:
-        #     #         lastAlt = tpAlt
-        #     #         alt = tpAlt
-        #     #         first = False
-        #     #         continue
-        #     #     if lastAlt < tpAlt:
-        #     #         lastAlt = tpAlt
-        #     #         alt += tpAlt
-        #     users[activity['user_id']] = alt
-        #     count += 1
-        
-        # print(users)
-
-    def part2Task10(self):
-        tps = self.trackpointColl.aggregate([{
-            '$geoNear': {
-                'near': { 'type': "Point", 'coordinates': [ -39.916 , 116.397 ] },
-                'distanceField': "dist.calculated",
-                'maxDistance': 0,
-            }
+    
+    def part2Task9(self):
+        activities = self.activityColl.aggregate([
+        {
+            '$lookup': {
+                'from': 'Trackpoint',
+                'localField': '_id',
+                'foreignField': 'activity_id',
+                'as': 'trackpoints'
+                }
+        }, 
+        {
+            '$project': {
+                'trackpoints.date_days': 1,
+                'user_id': 1
+                }
         }])
 
-        for tp in tps:
-            print(tp)
+        userNumInvalid = {}
+        for a in activities:
+            tps = a['trackpoints']
+            for i in range(len(tps) - 1):
+                if float(tps[i + 1]['date_days']) - float(tps[i]['date_days']) >= 0.00347222222:
+                    userNumInvalid[a['user_id']] = userNumInvalid.get(a['user_id'], 0) + 1
+                    break
+
+        pprint([('User id', 'Num invalid activities')] + sorted(list(userNumInvalid.items()), key=lambda x: x[1], reverse=True))
+
+
+    def part2Task10(self):
+        lat = 39.916
+        lon = 116.397
+        tps = self.trackpointColl.aggregate([
+            {
+            '$match': {
+                '$expr': {
+                    '$and': [
+                        {'$eq': [{'$round': ['$lat', 3]}, lat]},
+                        {'$eq': [{'$round': ['$lon', 3]}, lon]}
+                    ]
+                }
+            }
+        },
+        {
+           '$lookup': {
+               'from': 'Activity',
+               'localField': 'activity_id',
+               'foreignField': '_id',
+               'as': 'activities'
+            }
+        },
+        {
+            '$group': {
+                '_id': '$activities.user_id'
+            }
+        },
+        {'$project': {
+            'activities.user_id': 1
+        }}
+        ])
+
+        for u in tps:
+            pprint(u)
 
 def main():
     # try:
@@ -551,7 +490,9 @@ def main():
     # program.part2Task6point1()
     # program.part2Task6point2()
     # program.part2Task7()
-    program.part2Task8()
+    # program.part2Task8()
+    # program.part2Task9()
+    program.part2Task10()
 
 
 
